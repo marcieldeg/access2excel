@@ -1,4 +1,4 @@
-package br.com.degasperi.access2excel;
+package br.com.degasperi.access2excel.classes;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -21,12 +21,10 @@ import com.healthmarketscience.jackcess.Database;
 import com.healthmarketscience.jackcess.DatabaseBuilder;
 import com.healthmarketscience.jackcess.Table;
 
-import br.com.degasperi.access2excel.classes.Arguments;
-import br.com.degasperi.access2excel.classes.OleHeaderParser;
-
 public class Access2Excel implements AutoCloseable {
 	private Database database;
 	private OutputFormat outputFormat = OutputFormat.XLSX;
+	private StepWriter writer = new StepWriter(){};
 
 	public OutputFormat getOutputFormat() {
 		return outputFormat;
@@ -34,6 +32,10 @@ public class Access2Excel implements AutoCloseable {
 
 	public void setOutputFormat(OutputFormat outputFormat) {
 		this.outputFormat = outputFormat;
+	}
+
+	public void setWriter(StepWriter writer) {
+		this.writer = writer;
 	}
 
 	public void open(File inputFile) throws IOException {
@@ -58,7 +60,7 @@ public class Access2Excel implements AutoCloseable {
 			dateCellStyle.setDataFormat(df);
 
 			for (String tableName : database.getTableNames()) {
-				System.out.printf("Table %s...\n", tableName);
+				writer.write(String.format("Table %s...", tableName));
 				Table table = database.getTable(tableName);
 				Sheet sheet = workbook.createSheet(tableName);
 
@@ -155,10 +157,10 @@ public class Access2Excel implements AutoCloseable {
 				table.getColumns().forEach(o -> sheet.autoSizeColumn(o.getColumnIndex()));
 			}
 			workbook.write(new FileOutputStream(outputFile));
-			System.out.println("Done.");
+			writer.write("Done.");
 		} catch (Exception e) {
-			System.err.printf("Error: %s%s\n", e.getClass().getSimpleName(),
-					e.getMessage() == null ? "" : " - " + e.getMessage());
+			writer.error(String.format("Error: %s%s", e.getClass().getSimpleName(),
+					e.getMessage() == null ? "" : " - " + e.getMessage()));
 		}
 	}
 
@@ -175,12 +177,13 @@ public class Access2Excel implements AutoCloseable {
 		XLS, XLSX
 	}
 
-	public static void main(String[] args) throws Exception {
-		Arguments parameters = new Arguments(args);
-		try (Access2Excel converter = new Access2Excel()) {
-			converter.outputFormat = OutputFormat.valueOf(parameters.getOutputFormat());
-			converter.open(parameters.getInputFile());
-			converter.convert(parameters.getOutputFile());
+	public static interface StepWriter {
+		default void write(String text) {
+			System.out.println(text);
+		}
+
+		default void error(String text) {
+			System.err.println(text);
 		}
 	}
 }
