@@ -39,7 +39,7 @@ public class Access2Excel implements AutoCloseable {
 	}
 
 	public void open(File inputFile) throws IOException {
-		database = DatabaseBuilder.open(inputFile);
+		database = new DatabaseBuilder(inputFile).setReadOnly(true).open();
 	}
 
 	public void open(String inputFile) throws IOException {
