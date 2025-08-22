@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
@@ -21,32 +21,77 @@ import com.healthmarketscience.jackcess.Database;
 import com.healthmarketscience.jackcess.DatabaseBuilder;
 import com.healthmarketscience.jackcess.Table;
 
+/**
+ * Main class for converting MS Access databases to Excel spreadsheets.
+ * This class handles the opening, reading, and conversion process.
+ */
 public class Access2Excel implements AutoCloseable {
 	private Database database;
 	private OutputFormat outputFormat = OutputFormat.XLSX;
 	private StepWriter writer = new StepWriter(){};
 
+	/**
+	 * Gets the currently configured output format.
+	 * @return The output format (XLS or XLSX).
+	 */
 	public OutputFormat getOutputFormat() {
 		return outputFormat;
 	}
 
+	/**
+	 * Sets the desired output format for the Excel file.
+	 * @param outputFormat The format to use (XLS or XLSX).
+	 */
 	public void setOutputFormat(OutputFormat outputFormat) {
 		this.outputFormat = outputFormat;
 	}
 
+	/**
+	 * Sets a custom writer for logging conversion steps.
+	 * @param writer The StepWriter implementation.
+	 */
 	public void setWriter(StepWriter writer) {
 		this.writer = writer;
 	}
 
+	/**
+	 * Opens an MS Access database file in read-only mode.
+	 * Also performs a security check to prevent path traversal attacks.
+	 *
+	 * @param inputFile The Access database file to open.
+	 * @throws IOException If the file cannot be opened.
+	 * @throws SecurityException If the file path is considered a security risk (path traversal).
+	 */
 	public void open(File inputFile) throws IOException {
+		String workingDir = new File(".").getCanonicalPath();
+		if (!inputFile.getCanonicalPath().startsWith(workingDir))
+			throw new SecurityException("Input file path is outside the working directory.");
 		database = new DatabaseBuilder(inputFile).setReadOnly(true).open();
 	}
 
+	/**
+	 * Convenience method to open an MS Access database from a file path string.
+	 *
+	 * @param inputFile The path to the Access database file.
+	 * @throws IOException If the file cannot be opened.
+	 * @throws SecurityException If the file path is considered a security risk (path traversal).
+	 */
 	public void open(String inputFile) throws IOException {
 		open(new File(inputFile));
 	}
 
+	/**
+	 * Converts the opened Access database to an Excel file.
+	 * Iterates through all tables and writes the data to corresponding sheets.
+	 *
+	 * @param outputFile The file where the Excel spreadsheet will be saved.
+	 * @throws IOException If there is an error during file writing.
+	 * @throws SecurityException If the output file path is considered a security risk (path traversal).
+	 */
 	public void convert(File outputFile) throws IOException {
+		String workingDir = new File(".").getCanonicalPath();
+		if (!outputFile.getCanonicalPath().startsWith(workingDir))
+			throw new SecurityException("Output file path is outside the working directory.");
 		try (Workbook workbook = OutputFormat.XLSX.equals(outputFormat) ? new SXSSFWorkbook() : new HSSFWorkbook()) {
 			// header style
 			CellStyle style = workbook.createCellStyle();
@@ -56,7 +101,7 @@ public class Access2Excel implements AutoCloseable {
 
 			// date cell style
 			CellStyle dateCellStyle = workbook.createCellStyle();
-			short df = workbook.createDataFormat().getFormat(new SimpleDateFormat().toLocalizedPattern());
+			short df = workbook.createDataFormat().getFormat(DateTimeFormatter.ISO_LOCAL_DATE_TIME.toString());
 			dateCellStyle.setDataFormat(df);
 
 			for (String tableName : database.getTableNames()) {
@@ -130,7 +175,7 @@ public class Access2Excel implements AutoCloseable {
 								cell.setCellValue(numericValue);
 							break;
 						case SHORT_DATE_TIME:
-							Date dateValue = accessRow.getDate(column.getName());
+							LocalDateTime dateValue = accessRow.getLocalDateTime(column.getName());
 							if (dateValue != null)
 								cell.setCellValue(dateValue);
 							cell.setCellStyle(dateCellStyle);
@@ -164,24 +209,50 @@ public class Access2Excel implements AutoCloseable {
 		}
 	}
 
+	/**
+	 * Convenience method to convert the database to an Excel file specified by a path string.
+	 *
+	 * @param outputFile The path to the output Excel file.
+	 * @throws IOException If there is an error during file writing.
+	 * @throws SecurityException If the output file path is considered a security risk (path traversal).
+	 */
 	public void convert(String outputFile) throws IOException {
 		convert(new File(outputFile));
 	}
 
+	/**
+	 * Closes the database connection.
+	 * Should be called after conversion is complete, preferably in a try-with-resources block.
+	 */
 	@Override
 	public void close() throws Exception {
 		database.close();
 	}
 
+	/**
+	 * Enum representing the supported Excel output formats.
+	 */
 	public static enum OutputFormat {
 		XLS, XLSX
 	}
 
+	/**
+	 * A simple interface for logging progress during the conversion process.
+	 * Allows the caller to implement custom logging behavior.
+	 */
 	public static interface StepWriter {
+		/**
+		 * Writes a standard progress message.
+		 * @param text The message to write.
+		 */
 		default void write(String text) {
 			System.out.println(text);
 		}
 
+		/**
+		 * Writes an error message.
+		 * @param text The error message to write.
+		 */
 		default void error(String text) {
 			System.err.println(text);
 		}
