@@ -7,18 +7,22 @@ O Access2Excel é uma ferramenta de linha de comando desenvolvida em Java para c
 O projeto utiliza as seguintes bibliotecas principais:
 -   **Apache POI**: Para a criação e manipulação de arquivos Excel.
 -   **Jackcess**: Para a leitura de bancos de dados MS Access.
+-   **Apache Commons CLI**: Para uma análise robusta dos argumentos da linha de comando.
 
 ## 2. Como Usar
 
-A ferramenta é executada via linha de comando:
+A ferramenta é executada via linha de comando com as seguintes opções:
 
 ```bash
-java -jar Access2Excel.jar -inputFile=<arquivo_de_entrada> [-outputFile=<arquivo_de_saida>] [-format=<formato>]
+java -jar Access2Excel.jar -i <arquivo_de_entrada> [-o <arquivo_de_saida>] [-f <formato>]
 ```
 
--   `<arquivo_de_entrada>`: O caminho para o banco de dados Access (.MDB ou .ACCDB).
--   `<arquivo_de_saida>`: (Opcional) O nome do arquivo Excel a ser gerado. O padrão é o nome do arquivo de entrada com a extensão .xls ou .xlsx.
--   `<formato>`: (Opcional) O formato da planilha de saída. Pode ser "XLS" ou "XLSX". O padrão é "XLSX".
+**Argumentos:**
+
+*   `-i, --inputFile <caminho>`: (Obrigatório) O caminho para o banco de dados Access (.MDB ou .ACCDB).
+*   `-o, --outputFile <caminho>`: (Opcional) O nome do arquivo Excel a ser gerado.
+*   `-f, --format <formato>`: (Opcional) O formato da planilha de saída. Pode ser "XLS" ou "XLSX".
+*   `-h, --help`: Exibe a mensagem de ajuda.
 
 ## 3. Arquitetura e Fluxo de Dados
 
